@@ -1,0 +1,36 @@
+{
+    "name": "@arunsmiracle/expo-camera-modal",
+    "version": "1.0.0",
+    "description": "A reusable, full-screen camera modal for React Native and Expo projects.",
+    "main": "index.js",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/aroonsekar/expo-camera-modal.git"
+    },
+    "keywords": [
+      "react-native",
+      "expo",
+      "camera",
+      "modal"
+    ],
+    "author": "Arun Sekar",
+    "license": "MIT",
+    "bugs": {
+      "url": "https://github.com/aroonsekar/expo-camera-modal/issues"
+    },
+    "homepage": "https://github.com/aroonsekar/expo-camera-modal#readme",
+    "peerDependencies": {
+      "react": "*",
+      "react-native": "*"
+    },
+    "dependencies": {
+      "expo-camera": "~17.0.8",
+      "expo-media-library": "~18.2.0",
+      "react-native-feather": "^1.1.2"
+    }
+  }
+  
+  
