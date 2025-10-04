@@ -25,6 +25,23 @@ This package does not bundle its own versions of core libraries to avoid version
 -   `react-native-feather`
 
 
+## Tested Environment
+
+This package has been tested and is confirmed to work with the following environment and package versions:
+
+-   **`expo`**: `~54.0.11`
+
+-   **`react`**: `19.1.0`
+
+-   **`react-native`**: `0.81.4`
+
+-   **`expo-camera`**: `~17.0.8`
+
+-   **`expo-media-library`**: `~18.2.0`
+
+-   **`react-native-feather`**: `^1.1.2`
+
+
 ## Usage
 
 Using the modal is a two-step process: requesting permissions on app startup and then implementing the modal component in your screens.
@@ -60,7 +77,7 @@ const App = () => {
 
 #### **Important Note on Permission Handling**
 
-**On Android 16, after the September 5 update**, It is critical to request permissions at the top level of your application (e.g., in `App.js`) and **not** inside other functions or event handlers.
+On Android 16, after the September 5 update, It is critical to request permissions at the top level of your application (e.g., in `App.js`) and **not** inside other functions or event handlers.
 
 Requesting a permission (like `Notifications.requestPermissionsAsync()`) triggers a system-level dialog that pauses your app's JavaScript thread. If this is done in the middle of another function, it can cause that function to hang or fail unexpectedly, leading to a poor user experience where the app seems to freeze.
 
