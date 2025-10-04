@@ -33,7 +33,7 @@ Using the modal is a two-step process: requesting permissions on app startup and
 
 For the best user experience, your app should request the necessary permissions when it first launches. This package does not request permissions itself; it only checks if they have been granted.
 
-In your main **`App.js`** file, add the following `useEffect` hook:
+In your main **`App.js`** file or wherever you add the permissions, add the following `useEffect` hook:
 
 ```
 import React, { useEffect } from 'react';
@@ -58,6 +58,30 @@ const App = () => {
 };
 ```
 
+#### **Important Note on Permission Handling**
+
+**On Android 16, after the September 5 update**, It is critical to request permissions at the top level of your application (e.g., in `App.js`) and **not** inside other functions or event handlers.
+
+Requesting a permission (like `Notifications.requestPermissionsAsync()`) triggers a system-level dialog that pauses your app's JavaScript thread. If this is done in the middle of another function, it can cause that function to hang or fail unexpectedly, leading to a poor user experience where the app seems to freeze.
+
+**Example of what to avoid:** Notice how the permission request is commented out in the helper function below. This is the correct approach. The permissions should already be granted _before_ this function is ever called.
+
+```
+import * as Notifications from "expo-notifications";
+
+export const scheduleBreakNotifications = async (shiftStartTime) => {
+  // DO NOT DO THIS HERE: This will cause a delay and a poor UX.
+  // const { status } = await Notifications.requestPermissionsAsync();
+  // if (status !== "granted") {
+  //   return;
+  // }
+
+  // ... rest of the function
+};
+```
+
+By handling all permissions on startup, you ensure your app's logic runs smoothly without being interrupted by permission dialogs.
+
 ### 2. Implement the Modal in Your Screen
 
 Once permissions are handled, you can import and use the `CameraModal` component anywhere in your app.
@@ -67,7 +91,7 @@ Here is an example of how to use it to capture and display a profile picture:
 ```
 import React, { useState } from 'react';
 import { View, Button, Image, StyleSheet } from 'react-native';
-import CameraModal from '@your-npm-username/expo-camera-modal';
+import CameraModal from '@arunsmiracle/expo-camera-modal';
 
 const ProfileScreen = () => {
   const [isModalVisible, setModalVisible] = useState(false);
@@ -76,7 +100,7 @@ const ProfileScreen = () => {
   const handlePictureTaken = (uri) => {
     console.log('Image captured at:', uri);
     setProfilePicture(uri);
-    // The modal closes itself, but it's good practice to sync state
+    // The modal closes itself, so we just need to sync our state
     setModalVisible(false);
   };
 
