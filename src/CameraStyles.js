@@ -12,10 +12,10 @@ export default StyleSheet.create({
     backgroundColor: 'black',
   },
   camera: {
-    flex: 1,
+    flex: 1, // Reverted
   },
   preview: {
-    flex: 1,
+    flex: 1, // Reverted
     resizeMode: 'contain'
   },
   previewControls: {
@@ -79,5 +79,33 @@ export default StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-});
 
+  // --- New/Updated Styles ---
+  closeButton: {
+    position: 'absolute', 
+    top: 50, 
+    left: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    padding: 4,
+  },
+  sideControlsContainer: {
+    position: 'absolute',
+    top: 50,
+    right: 15,
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    paddingVertical: 10,
+  },
+  controlButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  autoFlashText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  }
+});

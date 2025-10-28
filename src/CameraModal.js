@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect} from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
@@ -14,10 +14,38 @@ const GridOverlay = () => (
   </View>
 );
 
+// Component for the side controls
+const CameraControls = ({ flash, onFlashToggle, onZoomIn, onZoomOut }) => {
+  return (
+    <View style={styles.sideControlsContainer}>
+      <TouchableOpacity style={styles.controlButton} onPress={onFlashToggle}>
+        {flash === 'off' ? (
+          <Icon.ZapOff stroke="white" width={28} height={28} />
+        ) : flash === 'on' ? (
+          <Icon.Zap stroke="white" width={28} height={28} />
+        ) : (
+          <Text style={styles.autoFlashText}>A</Text> 
+        )}
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.controlButton} onPress={onZoomIn}>
+        <Icon.ZoomIn stroke="white" width={28} height={28} />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.controlButton} onPress={onZoomOut}>
+        <Icon.ZoomOut stroke="white" width={28} height={28} />
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+
 const CameraModal = ({ visible, onClose, onPictureTaken }) => {
   const cameraRef = useRef(null);
   const [photo, setPhoto] = useState(null);
   
+  // New states for controls
+  const [flash, setFlash] = useState('off'); // 'off', 'on', 'auto'
+  const [zoom, setZoom] = useState(0); // 0 to 1
+
   const [cameraPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
 
@@ -44,11 +72,33 @@ const CameraModal = ({ visible, onClose, onPictureTaken }) => {
       setPhoto(null);
   };
 
+  // Reset states when modal is closed
   useEffect(() => {
     if (!visible) {
       setPhoto(null);
+      setZoom(0);
+      setFlash('off');
     }
   }, [visible]);
+
+  // --- New Control Handlers ---
+  const handleFlashToggle = () => {
+    setFlash(current => {
+      if (current === 'off') return 'on';
+      if (current === 'on') return 'auto';
+      return 'off'; // 'auto' -> 'off'
+    });
+  };
+
+  const handleZoomIn = () => {
+    setZoom(current => Math.min(current + 0.1, 1)); // Increment zoom, max 1
+  };
+
+  const handleZoomOut = () => {
+    setZoom(current => Math.max(current - 0.1, 0)); // Decrement zoom, min 0
+  };
+  // --- End New Control Handlers ---
+
 
   if (!visible) {
       return null;
@@ -59,6 +109,7 @@ const CameraModal = ({ visible, onClose, onPictureTaken }) => {
   }
 
   if (!cameraPermission.granted || !mediaPermission.granted) {
+    // ... (permission denied view remains the same)
     return (
       <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
         <View style={styles.loadingContainer}>
@@ -94,11 +145,25 @@ const CameraModal = ({ visible, onClose, onPictureTaken }) => {
             </View>
           </>
         ) : (
-          <CameraView ref={cameraRef} style={styles.camera} facing="back">
+          <CameraView 
+            ref={cameraRef} 
+            style={styles.camera} 
+            facing="back"
+            flash={flash} // Pass flash state
+            zoom={zoom}   // Pass zoom state
+          >
             <GridOverlay />
-             <TouchableOpacity style={{position: 'absolute', top: 50, left: 20}} onPress={onClose}>
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                 <Icon.X stroke="white" width={32} height={32}/>
             </TouchableOpacity>
+            
+            <CameraControls 
+              flash={flash}
+              onFlashToggle={handleFlashToggle}
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+            />
+
             <View style={styles.shutterButtonContainer}>
               <TouchableOpacity style={styles.shutterButton} onPress={takePicture}>
                 <Icon.Camera stroke="white" width={40} height={40} />
@@ -112,4 +177,3 @@ const CameraModal = ({ visible, onClose, onPictureTaken }) => {
 };
 
 export default CameraModal;
-
