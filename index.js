@@ -1,4 +1,3 @@
-import CameraModal from './src/CameraModal';
+import CameraModal from "./src/CameraModal";
 
 export default CameraModal;
-
