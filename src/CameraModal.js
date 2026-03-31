@@ -1,175 +1,230 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, StyleSheet, ActivityIndicator, Modal, Linking } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as MediaLibrary from 'expo-media-library';
-import * as Icon from 'react-native-feather';
-import styles from './CameraStyles';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  ActivityIndicator,
+  Modal,
+  Linking,
+} from "react-native";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as MediaLibrary from "expo-media-library";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Icon from "react-native-feather";
+import styles from "./CameraStyles";
 
-const GridOverlay = () => (
-  <View style={StyleSheet.absoluteFill} pointerEvents="none">
-    <View style={[styles.gridLine, { top: '33.33%' }]} />
-    <View style={[styles.gridLine, { top: '66.66%' }]} />
-    <View style={[styles.gridLine, { left: '33.33%', width: 1, height: '100%' }]} />
-    <View style={[styles.gridLine, { left: '66.66%', width: 1, height: '100%' }]} />
-  </View>
-);
+// Modular sub-components
+import {
+  GridOverlay,
+  TopControls,
+  BottomShutterBar,
+  AspectRatioBadge,
+} from "./components";
 
-// Component for the side controls
-const CameraControls = ({ flash, onFlashToggle, onZoomIn, onZoomOut }) => {
-  return (
-    <View style={styles.sideControlsContainer}>
-      <TouchableOpacity style={styles.controlButton} onPress={onFlashToggle}>
-        {flash === 'off' ? (
-          <Icon.ZapOff stroke="white" width={28} height={28} />
-        ) : flash === 'on' ? (
-          <Icon.Zap stroke="white" width={28} height={28} />
-        ) : (
-          <Text style={styles.autoFlashText}>A</Text> 
-        )}
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.controlButton} onPress={onZoomIn}>
-        <Icon.ZoomIn stroke="white" width={28} height={28} />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.controlButton} onPress={onZoomOut}>
-        <Icon.ZoomOut stroke="white" width={28} height={28} />
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-
-const CameraModal = ({ visible, onClose, onPictureTaken }) => {
+/**
+ * CameraModal
+ *
+ * Props:
+ *  visible         (bool)     – show/hide the modal
+ *  onClose         (func)     – called when the user dismisses the camera
+ *  onPictureTaken  (func)     – called with the photo URI on confirm
+ *  quality         (number)   – JPEG compression 0‑1, default 0.7  (optional)
+ *  initialFacing   (string)   – 'back' (default) or 'front'        (optional)
+ *
+ * Usage:
+ *   // Most screens — back camera
+ *   <CameraModal visible={show} onClose={close} onPictureTaken={handle} />
+ *
+ *   // Profile screen — front camera
+ *   <CameraModal visible={show} onClose={close} onPictureTaken={handle} initialFacing="front" />
+ */
+const CameraModal = ({
+  visible,
+  onClose,
+  onPictureTaken,
+  quality = 0.7,
+  initialFacing = "back",
+}) => {
+  const insets = useSafeAreaInsets();
   const cameraRef = useRef(null);
+
   const [photo, setPhoto] = useState(null);
-  
-  // New states for controls
-  const [flash, setFlash] = useState('off'); // 'off', 'on', 'auto'
-  const [zoom, setZoom] = useState(0); // 0 to 1
+  const [isCapturing, setIsCapturing] = useState(false);
+
+  const [flash, setFlash] = useState("off");
+  const [zoom, setZoom] = useState(0);
+  const [showGrid, setShowGrid] = useState(true);
 
   const [cameraPermission] = useCameraPermissions();
   const [mediaPermission] = MediaLibrary.usePermissions();
 
-  const takePicture = async () => {
-    if (cameraRef.current) {
+  // ── Take picture ────────────────────────────────────
+  const takePicture = useCallback(async () => {
+    if (cameraRef.current && !isCapturing) {
+      setIsCapturing(true);
       try {
-        const data = await cameraRef.current.takePictureAsync({ quality: 0.5 });
+        const data = await cameraRef.current.takePictureAsync({
+          quality: Math.max(0, Math.min(1, quality)),
+          exif: true,
+        });
         setPhoto(data);
       } catch (error) {
         console.error("Failed to take picture:", error);
+      } finally {
+        setIsCapturing(false);
       }
     }
-  };
+  }, [isCapturing, quality]);
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     if (photo) {
       onPictureTaken(photo.uri);
       setPhoto(null);
       onClose();
     }
-  };
-  
-  const handleRetake = () => {
-      setPhoto(null);
-  };
+  }, [photo, onPictureTaken, onClose]);
 
-  // Reset states when modal is closed
+  const handleRetake = () => setPhoto(null);
+
+  // Reset all state when modal closes
   useEffect(() => {
     if (!visible) {
       setPhoto(null);
       setZoom(0);
-      setFlash('off');
+      setFlash("off");
+      setShowGrid(true);
+      setIsCapturing(false);
     }
   }, [visible]);
 
-  // --- New Control Handlers ---
+  // ── Control handlers ────────────────────────────────
   const handleFlashToggle = () => {
-    setFlash(current => {
-      if (current === 'off') return 'on';
-      if (current === 'on') return 'auto';
-      return 'off'; // 'auto' -> 'off'
-    });
+    setFlash((c) => (c === "off" ? "on" : c === "on" ? "auto" : "off"));
   };
+  const handleGridToggle = () => setShowGrid((c) => !c);
+  const handleZoomIn = () => setZoom((c) => Math.min(c + 0.05, 1));
+  const handleZoomOut = () => setZoom((c) => Math.max(c - 0.05, 0));
 
-  const handleZoomIn = () => {
-    setZoom(current => Math.min(current + 0.1, 1)); // Increment zoom, max 1
-  };
+  if (!visible) return null;
 
-  const handleZoomOut = () => {
-    setZoom(current => Math.max(current - 0.1, 0)); // Decrement zoom, min 0
-  };
-  // --- End New Control Handlers ---
-
-
-  if (!visible) {
-      return null;
-  }
-
+  /* ── Loading permissions ── */
   if (!cameraPermission || !mediaPermission) {
-    return <Modal visible={visible} transparent={true}><View style={styles.loadingContainer}><ActivityIndicator size="large" color="white" /></View></Modal>;
-  }
-
-  if (!cameraPermission.granted || !mediaPermission.granted) {
-    // ... (permission denied view remains the same)
     return (
-      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+      <Modal visible={visible} transparent>
         <View style={styles.loadingContainer}>
-            <Text style={styles.permissionText}>
-              Camera and Media Library permissions are required. Please enable them in your device settings.
-            </Text>
-            <TouchableOpacity style={styles.permissionButton} onPress={() => Linking.openSettings()}>
-              <Text style={styles.permissionButtonText}>Open Settings</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.permissionButton, {backgroundColor: '#555'}]} onPress={onClose}>
-              <Text style={styles.permissionButtonText}>Cancel</Text>
-            </TouchableOpacity>
+          <ActivityIndicator size="large" color="white" />
         </View>
       </Modal>
     );
   }
 
+  /* ── Permissions denied ── */
+  if (!cameraPermission.granted || !mediaPermission.granted) {
+    return (
+      <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+        <View
+          style={[
+            styles.permissionContainer,
+            { paddingTop: insets.top, paddingBottom: insets.bottom },
+          ]}
+        >
+          <View style={styles.permissionContent}>
+            <View style={styles.permissionIconCircle}>
+              <Icon.Camera stroke="white" width={40} height={40} />
+            </View>
+            <Text style={styles.permissionTitle}>Camera Access Required</Text>
+            <Text style={styles.permissionText}>
+              We need camera and media library permissions to capture photos.
+              Please enable them in your device settings.
+            </Text>
+            <TouchableOpacity
+              style={styles.permissionButton}
+              onPress={() => Linking.openSettings()}
+              activeOpacity={0.8}
+            >
+              <Icon.Settings stroke="white" width={18} height={18} />
+              <Text style={styles.permissionButtonText}>Open Settings</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.permissionButtonSecondary}
+              onPress={onClose}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.permissionButtonSecondaryText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
+
+  /* ── Camera / Preview ── */
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         {photo ? (
-          <>
+          /* ────────────── Preview Mode ────────────── */
+          <View style={[styles.previewWrapper, { paddingTop: insets.top }]}>
             <Image source={{ uri: photo.uri }} style={styles.preview} />
-            <View style={styles.previewControls}>
-              <TouchableOpacity style={styles.button} onPress={handleRetake}>
-                <Icon.RefreshCw stroke="white" width={32} height={32} />
-                <Text style={styles.buttonText}>Retake</Text>
+
+            <AspectRatioBadge width={photo.width} height={photo.height} />
+
+            <View
+              style={[
+                styles.previewControls,
+                { paddingBottom: insets.bottom + 16 },
+              ]}
+            >
+              <TouchableOpacity
+                style={styles.previewButton}
+                onPress={handleRetake}
+                activeOpacity={0.8}
+              >
+                <Icon.RefreshCw stroke="white" width={22} height={22} />
+                <Text style={styles.previewButtonText}>Retake</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.button} onPress={handleConfirm}>
-                <Icon.Check stroke="white" width={32} height={32} />
-                <Text style={styles.buttonText}>Confirm</Text>
+              <TouchableOpacity
+                style={[styles.previewButton, styles.previewButtonConfirm]}
+                onPress={handleConfirm}
+                activeOpacity={0.8}
+              >
+                <Icon.Check stroke="white" width={22} height={22} />
+                <Text style={styles.previewButtonText}>Use Photo</Text>
               </TouchableOpacity>
             </View>
-          </>
+          </View>
         ) : (
-          <CameraView 
-            ref={cameraRef} 
-            style={styles.camera} 
-            facing="back"
-            flash={flash} // Pass flash state
-            zoom={zoom}   // Pass zoom state
-          >
-            <GridOverlay />
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Icon.X stroke="white" width={32} height={32}/>
-            </TouchableOpacity>
-            
-            <CameraControls 
+          /* ────────────── Camera Mode ────────────── */
+          <View style={styles.cameraFullScreen}>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing={initialFacing}
               flash={flash}
+              zoom={zoom}
+            >
+              {showGrid && <GridOverlay />}
+            </CameraView>
+
+            <TopControls
+              flash={flash}
+              showGrid={showGrid}
               onFlashToggle={handleFlashToggle}
+              onGridToggle={handleGridToggle}
               onZoomIn={handleZoomIn}
               onZoomOut={handleZoomOut}
+              onClose={onClose}
+              topInset={insets.top}
             />
 
-            <View style={styles.shutterButtonContainer}>
-              <TouchableOpacity style={styles.shutterButton} onPress={takePicture}>
-                <Icon.Camera stroke="white" width={40} height={40} />
-              </TouchableOpacity>
-            </View>
-          </CameraView>
+            <BottomShutterBar
+              zoom={zoom}
+              isCapturing={isCapturing}
+              onCapture={takePicture}
+              bottomInset={insets.bottom}
+            />
+          </View>
         )}
       </View>
     </Modal>
